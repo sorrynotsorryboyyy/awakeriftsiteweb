@@ -56,6 +56,9 @@ export async function getOrCreateProfile(
   if (!snapshot.exists) {
     const profile = {
       ...defaultProfile(email, displayName),
+      // Le joueur n'a pas encore choisi son pseudo : le jeu affichera
+      // l'écran de configuration tant que ce drapeau est faux.
+      setupCompleted: false,
       createdAt: FieldValue.serverTimestamp(),
       lastSeenAt: FieldValue.serverTimestamp(),
     };
@@ -70,5 +73,13 @@ export async function getOrCreateProfile(
 
   await ref.update({ lastSeenAt: FieldValue.serverTimestamp() });
 
-  return { id: uid, ...snapshot.data() };
+  const data = snapshot.data();
+
+  return {
+    id: uid,
+    ...data,
+    // Les comptes créés avant l'ajout du drapeau n'ont pas le champ :
+    // on les considère configurés pour ne pas leur réafficher l'écran.
+    setupCompleted: data?.setupCompleted ?? true,
+  };
 }

@@ -49,6 +49,12 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    // La forme normalisée doit suivre le pseudo, sinon le contrôle d'unicité
+    // de /api/profile/setup porterait sur une valeur périmée.
+    if (typeof updates.displayName === "string") {
+      updates.displayNameLower = (updates.displayName as string).trim().toLowerCase();
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { error: "Aucun champ modifiable fourni." },
