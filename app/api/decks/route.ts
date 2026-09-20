@@ -69,6 +69,8 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    console.log(`[decks PUT] uid=${auth.user.uid} deckId=${deckId} name=${body.name}`);
+
     await decksRef.doc(deckId).set({
       name: body.name,
       hero: typeof body.hero === "string" ? body.hero : "",
@@ -79,7 +81,12 @@ export async function PUT(request: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.json({ ok: true, id: deckId });
+    // Relecture immédiate : confirme que le document existe réellement
+    // après écriture, plutôt que de se fier au seul retour de set().
+    const written = await decksRef.doc(deckId).get();
+    console.log(`[decks PUT] ecrit=${written.exists} path=${written.ref.path}`);
+
+    return NextResponse.json({ ok: true, id: deckId, written: written.exists });
   } catch (error) {
     console.error("[decks PUT]", error);
     return NextResponse.json({ error: "Écriture impossible." }, { status: 500 });
