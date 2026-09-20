@@ -1,0 +1,64 @@
+# AwakeRift — site de connexion
+
+Passerelle d'authentification entre le jeu Unity et Firebase.
+Le jeu ouvre ce site dans le navigateur, l'utilisateur se connecte avec Google,
+et le site renvoie un jeton que le jeu échange contre une session.
+
+## Le flux
+
+1. Le jeu ouvre un port local et lance le navigateur sur
+   `/login?redirect_uri=http://127.0.0.1:PORT/callback&state=XXX`
+2. L'utilisateur se connecte avec Google (popup Firebase)
+3. La page envoie l'ID token à `/api/auth/callback`
+4. La route vérifie le token et crée un **custom token** Firebase
+5. La page redirige vers `redirect_uri?code=CUSTOM_TOKEN&state=XXX`
+6. Le jeu échange ce code contre une session (`signInWithCustomToken`)
+
+Le détour par un custom token évite d'exposer la session web au jeu. Le token
+est à usage unique et de courte durée, ce qui limite le risque lié à son
+passage par une URL.
+
+## Configuration
+
+Copier `.env.example` vers `.env.local` et renseigner les valeurs.
+
+| Variable | Où la trouver |
+|---|---|
+| `NEXT_PUBLIC_FIREBASE_*` | Console Firebase → Paramètres du projet → Vos applications → Web |
+| `FIREBASE_SERVICE_ACCOUNT` | Console Firebase → Paramètres → Comptes de service → Générer une clé privée |
+
+`FIREBASE_SERVICE_ACCOUNT` attend le JSON complet **sur une seule ligne**.
+
+> Cette clé donne un accès administrateur au projet Firebase. Elle ne doit
+> jamais être commitée ni exposée au navigateur. Les variables `NEXT_PUBLIC_*`
+> sont publiques par conception — ce sont les règles Firestore qui protègent
+> les données, pas le secret de ces clés.
+
+## Développement
+
+```bash
+npm install
+npm run dev
+```
+
+## Côté Firebase
+
+- **Authentication** → activer le fournisseur **Google**
+- **Authentication → Paramètres → Domaines autorisés** → ajouter le domaine Vercel
+
+## Côté jeu
+
+Dans `Auth Settings.asset` (projet Unity) :
+
+- `_loginUrl` → `https://VOTRE-DOMAINE.vercel.app/login`
+- `_firebaseApiKey` → la même valeur que `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `_useFakeBackend` → décocher
+
+## Points ouverts
+
+- **Le `state` n'est pas encore vérifié côté jeu.** Il est transmis et renvoyé,
+  mais `LoopbackListener` ne le compare pas à celui émis. C'est la protection
+  contre l'injection d'un code par une page tierce ; à brancher avant mise en
+  production.
+- **La route `/api/auth/callback` valide la `redirect_uri`** (loopback, chemin
+  `/callback`) mais pas le port, qui varie à chaque lancement du jeu.

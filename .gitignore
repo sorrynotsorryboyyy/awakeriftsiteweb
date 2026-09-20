@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+*.pem
+
+# Variables d'environnement — ne jamais commiter :
+# FIREBASE_SERVICE_ACCOUNT donne un accès admin complet au projet.
+.env
+.env*.local
+.vercel
+*.tsbuildinfo
+next-env.d.ts
