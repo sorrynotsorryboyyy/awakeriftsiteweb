@@ -54,8 +54,51 @@ Dans `Auth Settings.asset` (projet Unity) :
 - `_firebaseApiKey` → la même valeur que `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `_useFakeBackend` → décocher
 
+## Base de données
+
+Schéma Firestore :
+
+```
+users/{uid}
+  email, displayName, avatarImageId
+  level, allTimePoints, goldCoins
+  wins, losses, draws
+  createdAt, lastSeenAt
+
+users/{uid}/decks/{deckId}    name, hero, race, cards[], updatedAt
+users/{uid}/inventory/cards   owned[]
+```
+
+Les règles de sécurité sont dans `firestore.rules`, à coller dans
+Firebase Console → Firestore Database → Règles.
+
+### API
+
+Toutes les routes attendent `Authorization: Bearer <IdToken Firebase>`.
+L'identité vient du jeton vérifié côté serveur, jamais du corps de la
+requête : un client ne peut donc pas écrire dans le compte d'un autre.
+
+| Route | Méthode | Rôle |
+|---|---|---|
+| `/api/profile` | GET | Profil, créé à la première connexion |
+| `/api/profile` | PATCH | Pseudo et avatar uniquement |
+| `/api/stats` | POST | Résultat de match + gains |
+| `/api/decks` | GET / PUT / DELETE | Decks du joueur |
+
+`PATCH /api/profile` n'accepte que `displayName` et `avatarImageId`.
+`goldCoins`, `wins`, `losses` et le niveau ne sont modifiables que par le
+serveur — les exposer laisserait un client modifié s'attribuer monnaie et
+victoires.
+
 ## Points ouverts
 
+- **Aucun anti-triche sur les résultats de match.** `POST /api/stats` croit le
+  client sur parole : un jeu modifié peut déclarer autant de victoires qu'il
+  veut, et donc se créditer de la monnaie. Choix assumé pour l'instant, sans
+  classement ni récompense monétaire. **À renforcer avant toute boutique ou
+  compétition.** Pistes, par coût croissant : double déclaration des deux
+  joueurs avec validation par concordance, puis serveur de jeu autoritaire
+  (ce qui suppose d'abandonner le Distributed Authority).
 - **Le `state` n'est pas encore vérifié côté jeu.** Il est transmis et renvoyé,
   mais `LoopbackListener` ne le compare pas à celui émis. C'est la protection
   contre l'injection d'un code par une page tierce ; à brancher avant mise en

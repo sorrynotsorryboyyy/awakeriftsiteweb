@@ -39,7 +39,7 @@ function getServiceAccount() {
   }
 }
 
-function getAdminApp(): App {
+export function getAdminApp(): App {
   if (getApps().length) return getApp();
 
   return initializeApp({

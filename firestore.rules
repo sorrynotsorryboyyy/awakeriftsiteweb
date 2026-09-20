@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Règles à coller dans Firebase Console > Firestore Database > Règles.
+//
+// Principe : le jeu et le site passent par les routes API, qui utilisent le
+// SDK admin et ignorent ces règles. Elles servent de seconde barrière si
+// quelqu'un attaque Firestore directement avec un jeton volé ou légitime.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      // Chacun ne lit que son propre profil.
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // Création et suppression réservées au serveur (SDK admin).
+      allow create, delete: if false;
+
+      // Le joueur ne modifie que son pseudo et son avatar.
+      // goldCoins, wins, losses, draws, level et allTimePoints ne sont
+      // modifiables que par le serveur : sans cette restriction, un client
+      // modifié pourrait s'attribuer monnaie et victoires.
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['displayName', 'avatarImageId', 'lastSeenAt']);
+
+      match /decks/{deckId} {
+        // Les decks n'ont pas de valeur économique : le joueur les gère.
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      match /inventory/{docId} {
+        // Lecture seule côté client. Les cartes possédées seront créditées
+        // par le serveur (récompenses, achats) et jamais par le jeu.
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+
+    // Tout le reste est fermé par défaut.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
