@@ -71,9 +71,18 @@ export async function getOrCreateProfile(
     return { id: uid, ...created.data() };
   }
 
-  await ref.update({ lastSeenAt: FieldValue.serverTimestamp() });
-
   const data = snapshot.data();
+
+  // lastSeenAt n'est rafraîchi qu'une fois par heure. Sans ce garde, chaque
+  // lecture de profil déclencherait une écriture : à quelques centaines de
+  // joueurs qui rechargent leur profil, c'est le poste de coût dominant chez
+  // Firestore, où une écriture vaut environ dix lectures.
+  const lastSeen = data?.lastSeenAt?.toMillis?.() ?? 0;
+  const oneHour = 60 * 60 * 1000;
+
+  if (Date.now() - lastSeen > oneHour) {
+    await ref.update({ lastSeenAt: FieldValue.serverTimestamp() });
+  }
 
   return {
     id: uid,

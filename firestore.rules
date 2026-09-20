@@ -37,6 +37,17 @@ service cloud.firestore {
       }
     }
 
+    // Déclarations de résultats, écrites uniquement par le serveur.
+    // Un accès client direct permettrait de fabriquer une concordance et de
+    // contourner la vérification croisée.
+    match /matches/{matchId} {
+      allow read, write: if false;
+
+      match /claims/{uid} {
+        allow read, write: if false;
+      }
+    }
+
     // Tout le reste est fermé par défaut.
     match /{document=**} {
       allow read, write: if false;
