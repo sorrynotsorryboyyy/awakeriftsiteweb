@@ -32,13 +32,30 @@ export async function requireAuth(
   const idToken = header.slice("Bearer ".length).trim();
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
+    const auth = getAdminAuth();
+    const decoded = await auth.verifyIdToken(idToken);
+
+    // verifyIdToken valide la signature, pas l'existence du compte : un jeton
+    // reste utilisable après suppression de l'utilisateur, jusqu'à expiration.
+    // Sans ce contrôle, un compte supprimé continuerait de jouer et de
+    // réécrire ses données.
+    const record = await auth.getUser(decoded.uid);
+
+    if (record.disabled) {
+      return {
+        error: NextResponse.json({ error: "Compte désactivé." }, { status: 403 }),
+      };
+    }
 
     return {
       user: {
         uid: decoded.uid,
-        email: decoded.email ?? "",
-        displayName: decoded.name ?? decoded.email?.split("@")[0] ?? "Joueur",
+        email: decoded.email ?? record.email ?? "",
+        displayName:
+          decoded.name ??
+          record.displayName ??
+          decoded.email?.split("@")[0] ??
+          "Joueur",
       },
     };
   } catch {
