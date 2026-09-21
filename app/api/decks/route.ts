@@ -69,24 +69,21 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    console.log(`[decks PUT] uid=${auth.user.uid} deckId=${deckId} name=${body.name}`);
-
     await decksRef.doc(deckId).set({
       name: body.name,
       hero: typeof body.hero === "string" ? body.hero : "",
       race: typeof body.race === "number" ? body.race : 0,
-      cards: body.cards.filter((c: unknown) => typeof c === "string"),
+      // Les emplacements vides sont conservés en chaînes vides : le jeu
+      // attend un tableau de taille fixe (DefaultSize) dont les cases libres
+      // valent null ou "". Les filtrer réduirait la taille du deck au
+      // rechargement et fausserait IsFull() comme AddCard().
+      cards: body.cards.map((c: unknown) => (typeof c === "string" ? c : "")),
       defaultSize: typeof body.defaultSize === "number" ? body.defaultSize : 0,
       maxDuplicates: typeof body.maxDuplicates === "number" ? body.maxDuplicates : 0,
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // Relecture immédiate : confirme que le document existe réellement
-    // après écriture, plutôt que de se fier au seul retour de set().
-    const written = await decksRef.doc(deckId).get();
-    console.log(`[decks PUT] ecrit=${written.exists} path=${written.ref.path}`);
-
-    return NextResponse.json({ ok: true, id: deckId, written: written.exists });
+    return NextResponse.json({ ok: true, id: deckId });
   } catch (error) {
     console.error("[decks PUT]", error);
     return NextResponse.json({ error: "Écriture impossible." }, { status: 500 });
