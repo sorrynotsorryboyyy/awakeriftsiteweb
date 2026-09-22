@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/require-auth";
 import { db, getOrCreateProfile, FieldValue } from "@/lib/firestore";
+import { checkRateLimit, LIMITS } from "@/lib/rate-limit";
 
 /** Champs que le joueur a le droit de modifier lui-même. */
 const EDITABLE_FIELDS = ["displayName", "avatarImageId"] as const;
@@ -12,6 +13,9 @@ const EDITABLE_FIELDS = ["displayName", "avatarImageId"] as const;
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if ("error" in auth) return auth.error;
+
+  const limited = await checkRateLimit(auth.user.uid, "profile", LIMITS.profile);
+  if (limited) return limited;
 
   try {
     const profile = await getOrCreateProfile(
@@ -38,6 +42,9 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const auth = await requireAuth(request);
   if ("error" in auth) return auth.error;
+
+  const limited = await checkRateLimit(auth.user.uid, "profile", LIMITS.profile);
+  if (limited) return limited;
 
   try {
     const body = await request.json();

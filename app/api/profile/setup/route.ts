@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/require-auth";
 import { db, FieldValue } from "@/lib/firestore";
+import { checkRateLimit, LIMITS } from "@/lib/rate-limit";
 
 const MIN_LENGTH = 3;
 const MAX_LENGTH = 16;
@@ -19,6 +20,11 @@ const ALLOWED = /^[a-zA-Z0-9_-]+$/;
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request);
   if ("error" in auth) return auth.error;
+
+  // Le choix du pseudo interroge la base pour vérifier l'unicité : sans
+  // plafond, une boucle permettrait d'énumérer les pseudos existants.
+  const limited = await checkRateLimit(auth.user.uid, "setup", LIMITS.setup);
+  if (limited) return limited;
 
   try {
     const body = await request.json();

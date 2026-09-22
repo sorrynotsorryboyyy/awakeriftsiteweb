@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/require-auth";
 import { db, FieldValue } from "@/lib/firestore";
+import { checkRateLimit, LIMITS } from "@/lib/rate-limit";
 
 const MAX_DECKS = 50;
 const MAX_CARDS_PER_DECK = 200;
@@ -12,6 +13,9 @@ const MAX_CARDS_PER_DECK = 200;
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if ("error" in auth) return auth.error;
+
+  const limited = await checkRateLimit(auth.user.uid, "deck-read", LIMITS.deckRead);
+  if (limited) return limited;
 
   try {
     const snapshot = await db()
@@ -37,6 +41,9 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const auth = await requireAuth(request);
   if ("error" in auth) return auth.error;
+
+  const limited = await checkRateLimit(auth.user.uid, "deck-write", LIMITS.deckWrite);
+  if (limited) return limited;
 
   try {
     const body = await request.json();
@@ -96,6 +103,9 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const auth = await requireAuth(request);
   if ("error" in auth) return auth.error;
+
+  const limited = await checkRateLimit(auth.user.uid, "deck-write", LIMITS.deckWrite);
+  if (limited) return limited;
 
   const name = request.nextUrl.searchParams.get("name");
   if (!name) {

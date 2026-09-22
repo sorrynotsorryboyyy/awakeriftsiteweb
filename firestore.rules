@@ -29,6 +29,13 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
 
+      match /limits/{bucket} {
+        // Compteurs de débit, écrits uniquement par le serveur. Un accès
+        // client permettrait de les remettre à zéro et de contourner les
+        // plafonds.
+        allow read, write: if false;
+      }
+
       match /inventory/{docId} {
         // Lecture seule côté client. Les cartes possédées seront créditées
         // par le serveur (récompenses, achats) et jamais par le jeu.

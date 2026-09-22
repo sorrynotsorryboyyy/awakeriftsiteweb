@@ -21,6 +21,7 @@ export async function DELETE(request: NextRequest) {
   try {
     await deleteSubcollection(uid, "decks");
     await deleteSubcollection(uid, "inventory");
+    await deleteSubcollection(uid, "limits");
     await anonymizeMatchClaims(uid);
 
     await db().collection("users").doc(uid).delete();
