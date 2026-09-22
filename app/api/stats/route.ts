@@ -23,6 +23,13 @@ const MIN_SECONDS_BETWEEN_MATCHES = 30;
 /** Plafond quotidien, large pour un joueur normal, bloquant pour un script. */
 const MAX_MATCHES_PER_DAY = 200;
 
+/**
+ * Durée de conservation d'un match. Au-delà, la règle TTL de Firestore
+ * supprime le document : les deux déclarations ont largement eu le temps
+ * d'être recoupées.
+ */
+const MATCH_RETENTION_DAYS = 30;
+
 /** Issue opposée, pour vérifier que les deux déclarations concordent. */
 const OPPOSITE: Record<Outcome, Outcome> = {
   win: "loss",
@@ -186,8 +193,14 @@ async function recordClaim(
     at: FieldValue.serverTimestamp(),
   });
 
+  // expiresAt alimente la règle TTL configurée dans la console Firestore :
+  // un document par partie, jamais purgé, finirait par peser. La trace n'a
+  // d'intérêt que le temps de recouper les deux déclarations.
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + MATCH_RETENTION_DAYS);
+
   await matchRef.set(
-    { lastClaimAt: FieldValue.serverTimestamp() },
+    { lastClaimAt: FieldValue.serverTimestamp(), expiresAt },
     { merge: true }
   );
 

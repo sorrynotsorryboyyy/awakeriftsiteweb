@@ -85,31 +85,60 @@ lui faire accepter le code d'un autre compte.
 
 `LoopbackListener` le vérifie et ignore toute réponse non concordante.
 
+### 8. Écritures perdues en cas de coupure réseau
+
+`SaveDeck()` et `ReportMatchAsync()` loggeaient un avertissement puis
+abandonnaient : une coupure de quelques secondes suffisait à perdre un deck
+ou le résultat d'un match, alors que l'interface avait confirmé l'opération.
+
+`PersistentWriteQueue` sérialise désormais les écritures en attente dans les
+`PlayerPrefs`, avec l'uid du propriétaire en garde. `WriteRetryService` les
+rejoue toutes les 15 s et n'efface une entrée qu'après un envoi réussi — donc
+elles survivent à la fermeture du jeu. Un bandeau en bas d'écran indique
+combien d'écritures attendent.
+
+### 9. Limites de débit absentes hors `/api/stats`
+
+`/api/decks`, `/api/profile` et `/api/profile/setup` acceptaient un nombre
+illimité d'appels. `lib/rate-limit.ts` tient un compteur par uid et par
+minute dans `users/{uid}/limits/{bucket}` — une sous-collection, pour ne pas
+réécrire le document de profil à chaque appel.
+
+Une panne du compteur laisse passer la requête : mieux vaut une facture un
+peu plus salée qu'un joueur bloqué.
+
+### 10. Croissance illimitée de `matches`
+
+Un document par partie, jamais supprimé : à 1000 parties par jour, 365 000
+documents par an. Sans impact sur les performances (les accès se font par
+identifiant), mais le stockage se facture.
+
+Chaque document porte maintenant un champ `expiresAt` à J+30, sur lequel
+s'appuie une règle TTL Firestore. Les deux déclarations ont largement eu le
+temps d'être recoupées d'ici là.
+
+**La règle se crée en console, une seule fois** — le champ seul ne supprime
+rien :
+
+1. Console Firebase → **Firestore Database** → onglet **TTL**
+2. **Créer une politique**
+3. Groupe de collections : `matches`
+4. Champ d'horodatage : `expiresAt`
+
+La suppression se fait dans les 24 h suivant la date, sans compter comme
+opération facturée. Les documents antérieurs à ce changement n'ont pas de
+champ `expiresAt` et ne seront donc jamais purgés : ils sont peu nombreux et
+peuvent rester.
+
 ---
 
 ## Ce qui reste, par urgence
-
-### Élevée
-
-**Les écritures échouées sont perdues.** `SaveDeck()` et `ReportMatchAsync()`
-loggent un avertissement et abandonnent. Une coupure réseau de quelques
-secondes suffit à perdre un deck ou un résultat.
-→ File d'écriture persistante, rejouée au retour du réseau.
 
 ### Moyenne
 
 **Pas de pagination sur les decks.** `GET /api/decks` renvoie tout. Plafonné
 à 50 decks par joueur, donc sans danger immédiat, mais la réponse grossit
 linéairement.
-
-**La collection `matches` croît indéfiniment.** Un document par partie, jamais
-supprimé. À 1000 parties par jour, 365 000 documents par an. Sans impact sur
-les performances (accès par identifiant), mais le stockage se facture.
-→ TTL Firestore à 30 jours sur `matches`.
-
-**Pas de limite de débit sur les autres routes.** Seul `/api/stats` est
-protégé. Un script pourrait marteler `/api/decks` et gonfler la facture.
-→ Limite par IP au niveau de Vercel, ou compteur Firestore par uid.
 
 **Le compteur quotidien est réinitialisé paresseusement.** `matchesToday`
 est remis à zéro à la première requête d'un nouveau jour. Simple et sans
