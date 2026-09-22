@@ -110,16 +110,16 @@ l'adversaire ainsi que la vérification croisée.
 
 ## Points ouverts
 
-- **Aucun anti-triche sur les résultats de match.** `POST /api/stats` croit le
-  client sur parole : un jeu modifié peut déclarer autant de victoires qu'il
-  veut, et donc se créditer de la monnaie. Choix assumé pour l'instant, sans
-  classement ni récompense monétaire. **À renforcer avant toute boutique ou
-  compétition.** Pistes, par coût croissant : double déclaration des deux
-  joueurs avec validation par concordance, puis serveur de jeu autoritaire
-  (ce qui suppose d'abandonner le Distributed Authority).
-- **Le `state` n'est pas encore vérifié côté jeu.** Il est transmis et renvoyé,
-  mais `LoopbackListener` ne le compare pas à celui émis. C'est la protection
-  contre l'injection d'un code par une page tierce ; à brancher avant mise en
-  production.
+- **Deux comptes complices peuvent fausser des résultats.** La double
+  déclaration bloque la triche solitaire : les deux joueurs déclarent, le
+  serveur compare, et retire les gains en cas d'incohérence. Mais rien
+  n'empêche deux comptes de s'accorder sur un résultat fictif. La limite de
+  débit (1 match / 30 s, 200 / jour) plafonne le gain sans l'empêcher. Seul un
+  serveur de jeu autoritaire le résoudrait — ce qui suppose d'abandonner le
+  Distributed Authority. Acceptable sans boutique ni classement public.
+- **Limites de débit absentes sur `/api/decks` et `/api/profile`.** Seule
+  `/api/stats` est protégée : un script pourrait gonfler la facture Firestore.
+- **La collection `matches` n'est jamais purgée.** Un document par partie. Sans
+  danger immédiat, mais le stockage se facture : prévoir un TTL Firestore.
 - **La route `/api/auth/callback` valide la `redirect_uri`** (loopback, chemin
   `/callback`) mais pas le port, qui varie à chaque lancement du jeu.
