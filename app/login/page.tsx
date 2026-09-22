@@ -87,6 +87,18 @@ function LoginContent() {
           <button style={styles.button} onClick={handleSignIn}>
             Continuer avec Google
           </button>
+
+          <p style={styles.consent}>
+            En vous connectant, vous acceptez les{" "}
+            <a href="/terms" style={styles.consentLink}>
+              conditions d&apos;utilisation
+            </a>{" "}
+            et la{" "}
+            <a href="/privacy" style={styles.consentLink}>
+              politique de confidentialité
+            </a>
+            .
+          </p>
         </>
       )}
 
@@ -160,6 +172,16 @@ const styles: Record<string, React.CSSProperties> = {
   muted: { margin: "0 0 20px", color: "#a89a80", lineHeight: 1.5 },
   success: { margin: "0 0 8px", color: "#9ec98a" },
   error: { margin: "0 0 20px", color: "#d97a72", lineHeight: 1.5 },
+  consent: {
+    margin: "18px 0 0",
+    fontSize: 12.5,
+    lineHeight: 1.55,
+    color: "#7d7160",
+  },
+  consentLink: {
+    color: "#a89a80",
+    textDecoration: "underline",
+  },
   button: {
     width: "100%",
     padding: "12px 20px",

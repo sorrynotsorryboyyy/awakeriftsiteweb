@@ -84,11 +84,29 @@ requête : un client ne peut donc pas écrire dans le compte d'un autre.
 | `/api/profile` | PATCH | Pseudo et avatar uniquement |
 | `/api/stats` | POST | Résultat de match + gains |
 | `/api/decks` | GET / PUT / DELETE | Decks du joueur |
+| `/api/account` | DELETE | Suppression du compte (RGPD) |
+| `/api/account/export` | GET | Export des données (RGPD) |
 
 `PATCH /api/profile` n'accepte que `displayName` et `avatarImageId`.
 `goldCoins`, `wins`, `losses` et le niveau ne sont modifiables que par le
 serveur — les exposer laisserait un client modifié s'attribuer monnaie et
 victoires.
+
+## Conformité
+
+Trois pages publiques, liées depuis l'accueil et l'écran de connexion :
+
+- `/privacy` — politique de confidentialité
+- `/terms` — conditions d'utilisation
+- `/account` — export et suppression du compte
+
+`DELETE /api/account` efface le profil, les decks et l'inventaire, puis le
+compte Firebase Auth — dans cet ordre, car un jeton encore valide
+recréerait le profil tant que le compte existe.
+
+Les déclarations de match sont **anonymisées** plutôt que supprimées : un
+match lie deux joueurs, et les effacer fausserait l'historique de
+l'adversaire ainsi que la vérification croisée.
 
 ## Points ouverts
 
